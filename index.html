@@ -2,148 +2,1224 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Gym Simulator 3D - El Primo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Evolution Clicker - AAA Experience</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Impact', sans-serif; }
-        #interfaz {
+        :root {
+            --primary: #9ca3af;
+            --bg: #0f172a;
+            --panel-bg: rgba(255, 255, 255, 0.03);
+            --panel-border: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --danger: #ef4444;
+            --success: #22c55e;
+            --warning: #f59e0b;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-main);
+            overflow: hidden;
+            width: 100vw;
+            height: 100vh;
+            transition: background-color 2s ease;
+        }
+
+        /* Ambient Animated Background */
+        #ambient-bg {
             position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            color: #ff0055;
-            font-size: 32px;
-            text-shadow: 2px 2px #000;
+            top: -50%; left: -50%; width: 200%; height: 200%;
+            background: radial-gradient(circle at center, var(--primary) 0%, transparent 40%);
+            opacity: 0.15;
+            z-index: 0;
+            pointer-events: none;
+            animation: rotateBg 60s linear infinite;
+            transition: background 2s ease;
+            mix-blend-mode: screen;
+        }
+
+        @keyframes rotateBg {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* VFX Layer */
+        #vfxCanvas {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 5;
             pointer-events: none;
         }
-        #instrucciones {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
+
+        /* Main UI Layout */
+        #app {
+            display: grid;
+            grid-template-columns: 320px 1fr 320px;
+            gap: 24px;
+            padding: 24px;
+            height: 100vh;
+            position: relative;
+            z-index: 10;
+        }
+
+        @media (max-width: 1024px) {
+            #app {
+                grid-template-columns: 1fr;
+                grid-template-rows: auto 1fr auto;
+                overflow-y: auto;
+                padding: 16px;
+            }
+        }
+
+        /* Glassmorphism Panels */
+        .panel {
+            background: var(--panel-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid var(--panel-border);
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .panel-header {
+            padding: 20px;
+            font-size: 1.25rem;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px solid var(--panel-border);
+            background: linear-gradient(180deg, rgba(255,255,255,0.05) 0%, transparent 100%);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .scrollable {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.2); border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.4); }
+
+        /* Upgrades List */
+        .upgrade-item {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .upgrade-item:hover:not(.locked) {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-2px);
+            border-color: var(--primary);
+            box-shadow: 0 10px 20px -10px var(--primary);
+        }
+
+        .upgrade-item:active:not(.locked) {
+            transform: translateY(0) scale(0.98);
+        }
+
+        .upgrade-item.locked {
+            opacity: 0.5;
+            cursor: not-allowed;
+            filter: grayscale(100%);
+        }
+
+        .upgrade-name { font-weight: bold; font-size: 1rem; margin-bottom: 4px; color: var(--text-main); }
+        .upgrade-desc { font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; line-height: 1.4; }
+        .upgrade-cost { font-size: 0.9rem; font-weight: 800; color: var(--accent); display: flex; align-items: center; gap: 6px;}
+        
+        /* Center Stage */
+        .center-stage {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .era-title {
+            font-size: 3rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            background: linear-gradient(to bottom, #fff, var(--primary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+            text-shadow: 0 0 40px rgba(255,255,255,0.1);
+            transition: all 1s ease;
+        }
+
+        .score-container {
             text-align: center;
-            color: #aaa;
-            font-size: 14px;
+            margin-bottom: 40px;
+            z-index: 20;
+        }
+
+        .score {
+            font-size: 4rem;
+            font-weight: 900;
+            line-height: 1;
+            text-shadow: 0 4px 20px rgba(0,0,0,0.5);
+            font-variant-numeric: tabular-nums;
+            letter-spacing: -1px;
+        }
+
+        .cps {
+            font-size: 1.2rem;
+            color: var(--primary);
+            font-weight: 600;
+            margin-top: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        /* The Main Object */
+        .main-object-container {
+            width: 280px;
+            height: 280px;
+            position: relative;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            perspective: 1000px;
+            z-index: 20;
+            touch-action: manipulation;
+        }
+
+        .main-object {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275), filter 0.3s ease;
+            filter: drop-shadow(0 0 30px var(--primary));
+            color: var(--primary);
+        }
+
+        /* Overdrive Glow */
+        .overdrive .main-object {
+            filter: drop-shadow(0 0 60px var(--warning)) drop-shadow(0 0 20px #fff);
+            animation: pulseObj 0.5s infinite alternate;
+        }
+
+        @keyframes pulseObj {
+            from { transform: scale(1); }
+            to { transform: scale(1.05); }
+        }
+
+        /* Tabs System */
+        .tabs {
+            display: flex;
+            background: rgba(0,0,0,0.3);
+            padding: 8px;
+            border-radius: 16px;
+            margin: 16px;
+            gap: 8px;
+        }
+
+        .tab-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            color: var(--text-muted);
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .tab-btn.active {
+            background: rgba(255,255,255,0.1);
+            color: var(--text-main);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .tab-content {
+            display: none;
+            flex: 1;
+            overflow-y: auto;
+            padding: 0 16px 16px 16px;
+        }
+        .tab-content.active { display: block; }
+
+        /* Stats & Achievements */
+        .stat-row { display: flex; justify-content: space-between; padding: 12px 0; border-bottom: 1px solid rgba(255,255,255,0.05); font-size: 0.95rem; }
+        .stat-label { color: var(--text-muted); }
+        .stat-value { font-weight: bold; color: var(--text-main); font-variant-numeric: tabular-nums; }
+
+        .achievement {
+            background: rgba(0,0,0,0.2);
+            padding: 12px;
+            border-radius: 12px;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            opacity: 0.5;
+            transition: all 0.3s;
+            border-left: 4px solid transparent;
+        }
+        .achievement.unlocked {
+            opacity: 1;
+            background: rgba(255,255,255,0.05);
+            border-left-color: var(--success);
+        }
+        .ach-icon { width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+        .ach-details h4 { font-size: 0.9rem; margin-bottom: 2px; }
+        .ach-details p { font-size: 0.75rem; color: var(--text-muted); }
+
+        /* Evolution Button */
+        #evolve-btn {
+            margin-top: 40px;
+            padding: 16px 48px;
+            font-size: 1.2rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            background: linear-gradient(45deg, var(--warning), #fbbf24);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 10px 30px rgba(245, 158, 11, 0.4);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transform: scale(0);
+            opacity: 0;
             pointer-events: none;
+            z-index: 30;
+        }
+
+        #evolve-btn.visible {
+            transform: scale(1);
+            opacity: 1;
+            pointer-events: auto;
+            animation: pulseBtn 2s infinite;
+        }
+
+        #evolve-btn:hover {
+            transform: scale(1.05) translateY(-5px);
+            box-shadow: 0 20px 40px rgba(245, 158, 11, 0.6);
+        }
+
+        @keyframes pulseBtn {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            70% { box-shadow: 0 0 0 20px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        /* Toasts System */
+        #toast-container {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column-reverse;
+            gap: 10px;
+            z-index: 100;
+            pointer-events: none;
+        }
+
+        .toast {
+            background: rgba(0,0,0,0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.1);
+            padding: 12px 24px;
+            border-radius: 100px;
+            font-weight: 600;
+            color: #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            animation: toastIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards, toastOut 0.3s 2.7s ease forwards;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        @keyframes toastIn { from { opacity: 0; transform: translateY(20px) scale(0.8); } to { opacity: 1; transform: translateY(0) scale(1); } }
+        @keyframes toastOut { from { opacity: 1; transform: translateY(0) scale(1); } to { opacity: 0; transform: translateY(-20px) scale(0.8); } }
+
+        /* System Buttons */
+        .sys-btn {
+            width: 100%;
+            padding: 14px;
+            margin-bottom: 12px;
+            background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(255,255,255,0.1);
+            color: #fff;
+            border-radius: 12px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .sys-btn:hover { background: rgba(255,255,255,0.1); }
+        .sys-btn.danger { background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3); color: #fca5a5; }
+        .sys-btn.danger:hover { background: rgba(239, 68, 68, 0.2); }
+
+        /* Progress Bar */
+        .progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(0,0,0,0.3);
+            border-radius: 10px;
+            margin-top: 10px;
+            overflow: hidden;
+            position: absolute;
+            bottom: 0; left: 0;
+        }
+        .progress-fill {
+            height: 100%;
+            background: var(--primary);
+            width: 0%;
+            transition: width 0.5s ease;
+            box-shadow: 0 0 10px var(--primary);
+        }
+
+        textarea.export-box {
+            width: 100%;
+            height: 100px;
+            background: rgba(0,0,0,0.2);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 8px;
+            color: #fff;
+            padding: 10px;
+            margin-bottom: 12px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            resize: none;
         }
     </style>
 </head>
 <body>
+    <div id="ambient-bg"></div>
+    <canvas id="vfxCanvas"></canvas>
+    
+    <div id="app">
+        <!-- Left Panel: Upgrades -->
+        <div class="panel">
+            <div class="panel-header">
+                Evolución
+                <span id="upgrade-count" style="font-size:0.8rem; color:var(--text-muted);">0/150</span>
+            </div>
+            <div class="scrollable" id="upgrades-list">
+                <!-- Procedural upgrades injected here -->
+            </div>
+        </div>
 
-    <div id="interfaz">MANCUERNAS CAZADAS: <span id="puntos">0</span></div>
-    <div id="instrucciones">Arrastra el dedo por la pantalla para mover el disco de 20kg</div>
+        <!-- Center Panel: The Game -->
+        <div class="center-stage">
+            <div class="era-title" id="era-name">Piedra</div>
+            
+            <div class="score-container">
+                <div class="score" id="score-display">0</div>
+                <div class="cps" id="cps-display">0 / sec</div>
+            </div>
 
-    <!-- Motor 3D Three.js -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+            <div class="main-object-container" id="main-clicker">
+                <!-- SVG dynamically injected -->
+            </div>
 
-    <script>
-        // 1. CONFIGURACIÓN DEL GIMNASIO 3D
-        const escena = new THREE.Scene();
-        escena.background = new THREE.Color(0x1a1a1a); // Color suelo del gym
+            <button id="evolve-btn">Trascender</button>
 
-        const camara = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camara.position.set(0, 8, 10); // Mirada desde arriba inclinada tipo juego clásico
-        camara.lookAt(0, 0, 0);
+            <!-- Era Progress -->
+            <div style="position: absolute; bottom: 20px; width: 80%; max-width: 400px; text-align: center;">
+                <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 8px; text-transform: uppercase; font-weight: bold;" id="next-era-text">Progreso de Era</div>
+                <div style="width: 100%; height: 8px; background: rgba(0,0,0,0.5); border-radius: 4px; overflow: hidden; box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);">
+                    <div id="era-progress" style="height: 100%; width: 0%; background: var(--primary); transition: width 0.3s ease; box-shadow: 0 0 10px var(--primary);"></div>
+                </div>
+            </div>
+        </div>
 
-        const renderizador = new THREE.WebGLRenderer({ antialias: true });
-        renderizador.setSize(window.innerWidth, window.innerHeight);
-        document.body.appendChild(renderizador.domElement);
+        <!-- Right Panel: Info & Systems -->
+        <div class="panel">
+            <div class="tabs">
+                <button class="tab-btn active" data-tab="stats">Datos</button>
+                <button class="tab-btn" data-tab="achievements">Logros</button>
+                <button class="tab-btn" data-tab="system">Sistema</button>
+            </div>
+            
+            <!-- Stats -->
+            <div class="tab-content active" id="tab-stats">
+                <div class="stat-row"><span class="stat-label">Clicks Totales</span><span class="stat-value" id="stat-clicks">0</span></div>
+                <div class="stat-row"><span class="stat-label">Recursos Producidos</span><span class="stat-value" id="stat-total-res">0</span></div>
+                <div class="stat-row"><span class="stat-label">Poder de Click</span><span class="stat-value" id="stat-click-power">1</span></div>
+                <div class="stat-row"><span class="stat-label">Mejoras Compradas</span><span class="stat-value" id="stat-upgrades">0</span></div>
+                <div class="stat-row"><span class="stat-label">Golpes Críticos</span><span class="stat-value" id="stat-crits">0</span></div>
+                <div class="stat-row"><span class="stat-label">Probabilidad Crítico</span><span class="stat-value" id="stat-crit-chance">1%</span></div>
+                <div class="stat-row"><span class="stat-label">Multiplicador Crítico</span><span class="stat-value" id="stat-crit-mult">2.0x</span></div>
+                <div class="stat-row"><span class="stat-label">Tiempo Jugado</span><span class="stat-value" id="stat-time">00:00:00</span></div>
+            </div>
 
-        // 2. LUCES DEL GYM (Focos potentes para que brille el metal)
-        const luzTecho = new THREE.DirectionalLight(0xffffff, 1.5);
-        luzTecho.position.set(0, 10, 5);
-        escena.add(luzTecho);
-        escena.add(new THREE.AmbientLight(0x444444));
+            <!-- Achievements -->
+            <div class="tab-content" id="tab-achievements">
+                <div style="margin-bottom: 16px; text-align: center; font-size: 0.9rem; color: var(--accent);">
+                    Progreso: <span id="ach-progress" style="font-weight: bold; color: #fff;">0%</span>
+                </div>
+                <div id="achievements-list"></div>
+            </div>
 
-        // 3. NUESTRO JUGADOR: UN DISCO DE HIERRO DE 20KG (Un cilindro chato en 3D)
-        const geoDisco = new THREE.CylinderGeometry(1.5, 1.5, 0.3, 32);
-        const matDisco = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2, metalness: 0.8 });
-        const disco = new THREE.Mesh(geoDisco, matDisco);
-        disco.position.set(0, 0, 0);
-        escena.add(disco);
+            <!-- System / Save -->
+            <div class="tab-content" id="tab-system">
+                <div style="text-align: center; margin-bottom: 20px;">
+                    <div style="width: 60px; height: 60px; background: rgba(255,255,255,0.1); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 10px;">
+                        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+                    </div>
+                    <h3 style="font-size: 1.1rem; margin-bottom: 4px;">Guardado en la Nube</h3>
+                    <p style="font-size: 0.8rem; color: var(--text-muted);" id="cloud-status">Conectando...</p>
+                </div>
 
-        // Centro del disco (el agujero típico pintado de rojo)
-        const geoCentro = new THREE.CylinderGeometry(0.3, 0.3, 0.32, 16);
-        const matCentro = new THREE.MeshBasicMaterial({ color: 0xff0000 });
-        const centroDisco = new THREE.Mesh(geoCentro, matCentro);
-        disco.add(centroDisco); // Se pega al disco principal
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; margin-top: 16px;">
+                    <h4 style="margin-bottom: 12px; font-size: 0.9rem;">Exportar / Importar Manual</h4>
+                    <textarea class="export-box" id="save-data-box" placeholder="Pega tu código de guardado aquí o cópialo para hacer un backup..."></textarea>
+                    <button class="sys-btn" id="btn-copy">Copiar al Portapapeles</button>
+                    <button class="sys-btn" id="btn-import">Importar Partida</button>
+                </div>
 
-        // 4. EL OBJETIVO: LA MANCUERNA (Unión de 3 piezas 3D: mango y dos pesos)
-        const grupoMancuerna = new THREE.Group();
+                <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px; margin-top: 16px;">
+                    <button class="sys-btn danger" id="btn-wipe">Borrar Partida (Hard Reset)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container"></div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // --- 1. DATA & CONFIG ---
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'evolution-clicker-aaa';
         
-        // Mango de la mancuerna
-        const geoMango = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 16);
-        const matMetal = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9 });
-        const mango = new THREE.Mesh(geoMango, matMetal);
-        mango.rotation.z = Math.PI / 2; // Tumbado
-        grupoMancuerna.add(mango);
+        const SVGS = {
+            0: `<polygon points="30,80 50,20 70,80 60,95 40,95" fill="currentColor"/>`, // Piedra
+            1: `<path d="M50,95 C50,95 20,60 20,30 C20,10 50,10 50,10 C50,10 80,10 80,30 C80,60 50,95 50,95 Z" fill="currentColor"/>`, // Hoja
+            2: `<polygon points="10,90 90,90 70,50 90,50 50,10 10,50 30,50" fill="currentColor"/>`, // Templo
+            3: `<path d="M10,90 L90,90 L90,40 L70,60 L50,15 L30,60 L10,40 Z" fill="currentColor"/>`, // Corona
+            4: `<circle cx="50" cy="50" r="30" fill="none" stroke="currentColor" stroke-width="12" stroke-dasharray="15 10"/><circle cx="50" cy="50" r="15" fill="currentColor"/>`, // Engranaje
+            5: `<rect x="20" y="20" width="60" height="60" rx="5" fill="none" stroke="currentColor" stroke-width="6"/><path d="M50,20 v-10 M50,80 v10 M20,50 h-10 M80,50 h10 M35,20 v-10 M65,20 v-10 M35,80 v10 M65,80 v10 M20,35 h-10 M20,65 h-10 M80,35 h10 M80,65 h10" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="10" fill="currentColor"/>`, // Chip
+            6: `<circle cx="50" cy="50" r="25" fill="currentColor"/><ellipse cx="50" cy="50" rx="45" ry="12" fill="none" stroke="currentColor" stroke-width="6" transform="rotate(25 50 50)"/>`, // Planeta
+            7: `<path d="M50,50 m-40,0 a40,40 0 1,0 80,0 a40,40 0 1,0 -80,0" fill="none" stroke="currentColor" stroke-width="4" stroke-dasharray="10 20" animation="spin 5s linear infinite"/><circle cx="50" cy="50" r="15" fill="currentColor" filter="blur(2px)"/>`, // Galaxia
+            8: `<polygon points="50,10 90,30 90,70 50,90 10,70 10,30" fill="none" stroke="currentColor" stroke-width="4"/><polygon points="50,30 70,40 70,60 50,70 30,60 30,40" fill="currentColor"/><line x1="10" y1="30" x2="30" y2="40" stroke="currentColor" stroke-width="4"/><line x1="90" y1="30" x2="70" y2="40" stroke="currentColor" stroke-width="4"/><line x1="10" y1="70" x2="30" y2="60" stroke="currentColor" stroke-width="4"/><line x1="90" y1="70" x2="70" y2="60" stroke="currentColor" stroke-width="4"/><line x1="50" y1="10" x2="50" y2="30" stroke="currentColor" stroke-width="4"/><line x1="50" y1="90" x2="50" y2="70" stroke="currentColor" stroke-width="4"/>`, // Tesseract
+            9: `<circle cx="50" cy="50" r="15" fill="currentColor"/><path d="M10,50 Q50,10 90,50 Q50,90 10,50 Z" fill="none" stroke="currentColor" stroke-width="4"/><circle cx="50" cy="50" r="40" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="4 8"/>` // Dios
+        };
 
-        // Pesos de los lados (dos cilindros grandes negros)
-        const geoPeso = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 16);
-        const matPeso = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
-        
-        const pesoIzquierdo = new THREE.Mesh(geoPeso, matPeso);
-        pesoIzquierdo.position.x = -0.7;
-        pesoIzquierdo.rotation.z = Math.PI / 2;
-        grupoMancuerna.add(pesoIzquierdo);
+        const ERAS = [
+            { id: 0, name: "Piedra", req: 0, color: "#9ca3af", bg: "#0f172a", freq: 150, osc: 'square' },
+            { id: 1, name: "Naturaleza", req: 1e3, color: "#4ade80", bg: "#064e3b", freq: 220, osc: 'triangle' },
+            { id: 2, name: "Civilización", req: 5e4, color: "#fbbf24", bg: "#451a03", freq: 330, osc: 'sine' },
+            { id: 3, name: "Reino", req: 2e6, color: "#3b82f6", bg: "#1e3a8a", freq: 440, osc: 'triangle' },
+            { id: 4, name: "Industria", req: 1e8, color: "#f97316", bg: "#431407", freq: 100, osc: 'sawtooth' },
+            { id: 5, name: "Tecnología", req: 5e9, color: "#06b6d4", bg: "#083344", freq: 880, osc: 'square' },
+            { id: 6, name: "Espacio", req: 1e12, color: "#a855f7", bg: "#2e1065", freq: 150, osc: 'sine' },
+            { id: 7, name: "Galaxias", req: 5e14, color: "#ec4899", bg: "#4c0519", freq: 600, osc: 'triangle' },
+            { id: 8, name: "Multiverso", req: 1e17, color: "#14b8a6", bg: "#042f2e", freq: 1200, osc: 'sawtooth' },
+            { id: 9, name: "Dios", req: 1e20, color: "#ffffff", bg: "#171717", freq: 2000, osc: 'sine' }
+        ];
 
-        const pesoDerecho = pesoIzquierdo.clone();
-        pesoDerecho.position.x = 0.7;
-        grupoMancuerna.add(pesoDerecho);
+        // Procedural Upgrades Generation (150 total, 15 per era)
+        const UPGRADES = [];
+        const UPGRADE_TEMPLATES = [
+            { type: 'click_flat', tName: 'Poder de', mult: 1, base: 10 },
+            { type: 'cps_flat', tName: 'Recolección en', mult: 1.5, base: 15 },
+            { type: 'click_perc', tName: 'Fuerza de', mult: 5, base: 100 },
+            { type: 'cps_perc', tName: 'Eficiencia de', mult: 5, base: 150 },
+            { type: 'crit_chance', tName: 'Precisión de', mult: 10, base: 500 }
+        ];
 
-        escena.add(grupoMancuerna);
-        recolocarMancuerna();
+        for (let e = 0; e < 10; e++) {
+            for (let u = 0; u < 15; u++) {
+                const t = UPGRADE_TEMPLATES[u % UPGRADE_TEMPLATES.length];
+                const baseCost = Math.pow(10, e) * Math.pow(1.6, u) * t.base;
+                let val = 0;
+                let desc = "";
+                if(t.type === 'click_flat') { val = Math.max(1, Math.floor(Math.pow(5, e) * Math.pow(1.2, u))); desc = `+${formatNumber(val)} Clicks`; }
+                if(t.type === 'cps_flat') { val = Math.max(1, Math.floor(Math.pow(6, e) * Math.pow(1.3, u))); desc = `+${formatNumber(val)} CPS`; }
+                if(t.type === 'click_perc') { val = 0.1; desc = `+10% Poder de Click Global`; }
+                if(t.type === 'cps_perc') { val = 0.1; desc = `+10% Producción Global`; }
+                if(t.type === 'crit_chance') { val = 0.01; desc = `+1% Prob. Crítico`; }
 
-        // 5. LÓGICA DEL JUEGO Y CONTROLES
-        let puntos = 0;
-        let mouseX = 0, mouseY = 0;
-        let objetivoX = 0, objetivoZ = 0;
-
-        function recolocarMancuerna() {
-            grupoMancuerna.position.x = (Math.random() - 0.5) * 8;
-            grupoMancuerna.position.z = (Math.random() - 0.5) * 6;
-            grupoMancuerna.position.y = 0;
+                UPGRADES.push({
+                    id: `u_${e}_${u}`,
+                    era: e,
+                    name: `${t.tName} ${ERAS[e].name} ${Math.floor(u/5) > 0 ? ['II','III'][Math.floor(u/5)-1] : ''}`,
+                    desc: desc,
+                    cost: baseCost,
+                    type: t.type,
+                    value: val
+                });
+            }
         }
 
-        // Detectar el dedo en la pantalla del iPhone para mover el disco
-        window.addEventListener('touchmove', (e) => {
-            const touch = e.touches[0];
-            // Traducimos los píxeles de la pantalla a coordenadas del mundo 3D
-            objetivoX = ((touch.clientX / window.innerWidth) * 2 - 1) * 5;
-            objetivoZ = -((touch.clientY / window.innerHeight) * 2 - 1) * 4;
-        });
+        // Procedural Achievements (100+)
+        const ACHIEVEMENTS = [];
+        const MILESTONES = [10, 100, 1000, 10000, 100000, 1e6, 1e7, 1e8, 1e9, 1e10, 1e11, 1e12];
+        MILESTONES.forEach(m => ACHIEVEMENTS.push({ id: `ach_clk_${m}`, name: `Dedo Ágil`, desc: `Haz ${formatNumber(m)} clicks`, req: m, type: 'clicks' }));
+        MILESTONES.forEach(m => ACHIEVEMENTS.push({ id: `ach_res_${m}`, name: `Magnate`, desc: `Acumula ${formatNumber(m)} recursos`, req: m, type: 'total_res' }));
+        ERAS.forEach(e => ACHIEVEMENTS.push({ id: `ach_era_${e.id}`, name: `Evolución: ${e.name}`, desc: `Alcanza la era ${e.name}`, req: e.id, type: 'era' }));
 
-        // 6. BUCLE DE ANIMACIÓN (Renderizado e IA de colisiones)
-        function animar() {
-            requestAnimationFrame(animar);
+        // --- 2. GAME STATE ---
+        let STATE = {
+            resources: 0,
+            totalResources: 0,
+            clicks: 0,
+            crits: 0,
+            timePlayed: 0,
+            era: 0,
+            upgrades: [], // Array of purchased upgrade IDs
+            achievements: [], // Array of unlocked achievement IDs
+            lastSave: Date.now()
+        };
 
-            // Movimiento suave del disco hacia donde tienes el dedo
-            disco.position.x += (objetivoX - disco.position.x) * 0.1;
-            disco.position.z += (objetivoZ - disco.position.z) * 0.1;
+        // Derived Stats (Calculated on the fly to avoid save state bugs)
+        let STATS = {
+            clickPower: 1,
+            cps: 0,
+            critChance: 0.01,
+            critMult: 2.0,
+            clickMult: 1.0,
+            cpsMult: 1.0
+        };
 
-            // Rotamos la mancuerna sobre sí misma para que se vea guapa y brillante
-            grupoMancuerna.rotation.y += 0.02;
-            grupoMancuerna.rotation.x += 0.01;
+        // --- 3. CORE LOGIC ---
+        function formatNumber(num) {
+            if (num < 1000) return Math.floor(num).toString();
+            const suffixes = ["", "K", "M", "B", "T", "Qa", "Qi", "Sx", "Sp", "Oc", "No", "Dc"];
+            const suffixNum = Math.floor(("" + Math.floor(num)).length / 3);
+            if(suffixNum >= suffixes.length) return num.toExponential(2);
+            let shortValue = parseFloat((suffixNum !== 0 ? (num / Math.pow(1000, suffixNum)) : num).toPrecision(3));
+            if (shortValue % 1 !== 0) shortValue = shortValue.toFixed(1);
+            return shortValue + suffixes[suffixNum];
+        }
 
-            // DETECCIÓN DE COLISIÓN 3D (Teorema de Pitágoras en tres dimensiones)
-            const distancia = disco.position.distanceTo(grupoMancuerna.position);
+        function calculateStats() {
+            let baseClick = 1;
+            let baseCps = 0;
+            let cMult = 1.0;
+            let pMult = 1.0;
+            let critC = 0.01;
+
+            STATE.upgrades.forEach(id => {
+                const up = UPGRADES.find(u => u.id === id);
+                if(!up) return;
+                if(up.type === 'click_flat') baseClick += up.value;
+                if(up.type === 'cps_flat') baseCps += up.value;
+                if(up.type === 'click_perc') cMult += up.value;
+                if(up.type === 'cps_perc') pMult += up.value;
+                if(up.type === 'crit_chance') critC += up.value;
+            });
+
+            // Era base bonuses
+            baseClick += STATE.era * 5;
+            cMult += (STATE.era * 0.5);
+
+            STATS.clickPower = baseClick * cMult;
+            STATS.cps = baseCps * pMult;
+            STATS.critChance = Math.min(1.0, critC);
+            STATS.critMult = 2.0 + (STATE.era * 0.5);
+            STATS.clickMult = cMult;
+            STATS.cpsMult = pMult;
+        }
+
+        function triggerClick(e) {
+            let isCrit = Math.random() < STATS.critChance;
+            let amount = STATS.clickPower * (isCrit ? STATS.critMult : 1);
             
-            if (distancia < 1.8) { // Si el disco toca la mancuerna... ¡PUM! ¡Punto!
-                puntos++;
-                document.getElementById("puntos").innerText = puntos;
-                recolocarMancuerna(); // Aparece en otro sitio del gym
+            STATE.resources += amount;
+            STATE.totalResources += amount;
+            STATE.clicks++;
+            if(isCrit) STATE.crits++;
+
+            // Visuals
+            const rect = elements.mainClicker.getBoundingClientRect();
+            let x, y;
+            if(e && e.clientX) {
+                x = e.clientX;
+                y = e.clientY;
+            } else {
+                x = rect.left + rect.width/2;
+                y = rect.top + rect.height/2;
             }
 
-            renderizador.render(escena, camara);
+            spawnParticles(x, y, isCrit ? 15 : 5, isCrit);
+            spawnFloatingText(x, y, `+${formatNumber(amount)}`, isCrit);
+            
+            if(isCrit) {
+                elements.mainClicker.classList.add('overdrive');
+                setTimeout(() => elements.mainClicker.classList.remove('overdrive'), 100);
+            }
+
+            playSynthSound(isCrit ? 'crit' : 'click');
+            checkAchievements();
+            checkEraProgress();
+            updateUI(true); // Force fast update on click
         }
 
-        animar();
+        function buyUpgrade(id) {
+            const up = UPGRADES.find(u => u.id === id);
+            if(up && !STATE.upgrades.includes(id) && STATE.resources >= up.cost) {
+                STATE.resources -= up.cost;
+                STATE.upgrades.push(id);
+                calculateStats();
+                playSynthSound('buy');
+                spawnFloatingText(window.innerWidth/2, window.innerHeight/2, "¡Mejora Adquirida!", false, "#fff");
+                renderUpgrades();
+                updateUI(true);
+            }
+        }
 
-        // Si giras la pantalla del móvil, se autoajusta el 3D
-        window.addEventListener('resize', () => {
-            camara.aspect = window.innerWidth / window.innerHeight;
-            camara.updateProjectionMatrix();
-            renderizador.setSize(window.innerWidth, window.innerHeight);
+        function checkAchievements() {
+            let newlyUnlocked = false;
+            ACHIEVEMENTS.forEach(ach => {
+                if(!STATE.achievements.includes(ach.id)) {
+                    let unlock = false;
+                    if(ach.type === 'clicks' && STATE.clicks >= ach.req) unlock = true;
+                    if(ach.type === 'total_res' && STATE.totalResources >= ach.req) unlock = true;
+                    if(ach.type === 'era' && STATE.era >= ach.req) unlock = true;
+
+                    if(unlock) {
+                        STATE.achievements.push(ach.id);
+                        showToast(`🏆 Logro Desbloqueado: ${ach.name}`);
+                        playSynthSound('achieve');
+                        newlyUnlocked = true;
+                    }
+                }
+            });
+            if(newlyUnlocked) renderAchievements();
+        }
+
+        function checkEraProgress() {
+            if(STATE.era < ERAS.length - 1) {
+                const next = ERAS[STATE.era + 1];
+                if(STATE.resources >= next.req) {
+                    elements.evolveBtn.classList.add('visible');
+                } else {
+                    elements.evolveBtn.classList.remove('visible');
+                }
+                let prog = Math.min(100, (STATE.resources / Math.max(1, next.req)) * 100);
+                document.getElementById('era-progress').style.width = `${prog}%`;
+            } else {
+                elements.evolveBtn.classList.remove('visible');
+                document.getElementById('era-progress').style.width = `100%`;
+                document.getElementById('next-era-text').innerText = "Trascendencia Máxima Alcanzada";
+            }
+        }
+
+        function evolve() {
+            if(STATE.era < ERAS.length - 1 && STATE.resources >= ERAS[STATE.era + 1].req) {
+                STATE.era++;
+                applyEraVisuals();
+                showToast(`🌌 Has evolucionado a la Era: ${ERAS[STATE.era].name}`);
+                playSynthSound('evolve');
+                
+                // Huge particle burst
+                spawnParticles(window.innerWidth/2, window.innerHeight/2, 100, true, true);
+                
+                elements.evolveBtn.classList.remove('visible');
+                checkAchievements();
+                renderUpgrades();
+                calculateStats();
+            }
+        }
+
+        // --- 4. AUDIO SYSTEM (WEB AUDIO API) ---
+        let audioCtx;
+        function initAudio() {
+            if(!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if(audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playSynthSound(type) {
+            if(!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            
+            const now = audioCtx.currentTime;
+            const eraData = ERAS[STATE.era];
+
+            if(type === 'click') {
+                osc.type = eraData.osc;
+                osc.frequency.setValueAtTime(eraData.freq + Math.random()*20, now);
+                osc.frequency.exponentialRampToValueAtTime(0.01, now + 0.1);
+                gain.gain.setValueAtTime(0.05, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                osc.start(now); osc.stop(now + 0.1);
+            } else if(type === 'crit') {
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(eraData.freq * 2, now);
+                osc.frequency.exponentialRampToValueAtTime(10, now + 0.2);
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.exponentialRampToValueAtTime(0.001, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if(type === 'buy') {
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(400, now);
+                osc.frequency.setValueAtTime(600, now + 0.1);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.1, now + 0.05);
+                gain.gain.linearRampToValueAtTime(0, now + 0.2);
+                osc.start(now); osc.stop(now + 0.2);
+            } else if(type === 'evolve') {
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(100, now);
+                osc.frequency.linearRampToValueAtTime(800, now + 1.0);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.2, now + 0.5);
+                gain.gain.linearRampToValueAtTime(0, now + 1.5);
+                osc.start(now); osc.stop(now + 1.5);
+            } else if(type === 'achieve') {
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(523.25, now); // C5
+                osc.frequency.setValueAtTime(659.25, now + 0.1); // E5
+                osc.frequency.setValueAtTime(783.99, now + 0.2); // G5
+                gain.gain.setValueAtTime(0.1, now);
+                gain.gain.linearRampToValueAtTime(0, now + 0.5);
+                osc.start(now); osc.stop(now + 0.5);
+            }
+        }
+
+        // --- 5. VFX SYSTEM (CANVAS) ---
+        const canvas = document.getElementById('vfxCanvas');
+        const ctx = canvas.getContext('2d', { alpha: true });
+        let particles = [];
+        let floatTexts = [];
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        function spawnParticles(x, y, count, isCrit, isNova = false) {
+            const color = ERAS[STATE.era].color;
+            for(let i=0; i<count; i++) {
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * (isNova ? 15 : (isCrit ? 8 : 4));
+                particles.push({
+                    x: x, y: y,
+                    vx: Math.cos(angle) * speed,
+                    vy: Math.sin(angle) * speed - 2, // Slight upward bias
+                    life: 1.0,
+                    color: isCrit ? '#f59e0b' : color,
+                    size: Math.random() * (isNova ? 6 : 3) + 1
+                });
+            }
+        }
+
+        function spawnFloatingText(x, y, text, isCrit, overrideColor = null) {
+            floatTexts.push({
+                x: x + (Math.random() * 40 - 20),
+                y: y + (Math.random() * 20 - 10),
+                text: text,
+                life: 1.0,
+                isCrit: isCrit,
+                color: overrideColor || (isCrit ? '#f59e0b' : '#fff')
+            });
+        }
+
+        function updateAndDrawVFX(dt) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Particles
+            for(let i = particles.length - 1; i >= 0; i--) {
+                let p = particles[i];
+                p.x += p.vx;
+                p.y += p.vy;
+                p.vy += 0.1; // Gravity
+                p.life -= dt * 1.5;
+                
+                if(p.life <= 0) {
+                    particles.splice(i, 1);
+                    continue;
+                }
+                
+                ctx.globalAlpha = p.life;
+                ctx.fillStyle = p.color;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+
+            // Floating Texts
+            ctx.textAlign = 'center';
+            for(let i = floatTexts.length - 1; i >= 0; i--) {
+                let ft = floatTexts[i];
+                ft.y -= dt * 50; // Move up
+                ft.life -= dt * 1.0;
+                
+                if(ft.life <= 0) {
+                    floatTexts.splice(i, 1);
+                    continue;
+                }
+                
+                ctx.globalAlpha = ft.life;
+                ctx.fillStyle = ft.color;
+                ctx.font = ft.isCrit ? '900 28px system-ui' : '700 20px system-ui';
+                
+                if(ft.isCrit) {
+                    ctx.shadowColor = '#f59e0b';
+                    ctx.shadowBlur = 10;
+                } else {
+                    ctx.shadowBlur = 0;
+                }
+                
+                ctx.fillText(ft.text, ft.x, ft.y);
+            }
+            ctx.globalAlpha = 1.0;
+            ctx.shadowBlur = 0;
+        }
+
+        // --- 6. UI INTERACTION & RENDERING ---
+        const elements = {
+            score: document.getElementById('score-display'),
+            cps: document.getElementById('cps-display'),
+            mainClicker: document.getElementById('main-clicker'),
+            eraName: document.getElementById('era-name'),
+            upgradesList: document.getElementById('upgrades-list'),
+            achievementsList: document.getElementById('achievements-list'),
+            evolveBtn: document.getElementById('evolve-btn')
+        };
+
+        let displayScore = 0; // For smooth rolling numbers
+
+        function applyEraVisuals() {
+            const eraData = ERAS[STATE.era];
+            document.documentElement.style.setProperty('--primary', eraData.color);
+            document.documentElement.style.setProperty('--bg', eraData.bg);
+            elements.eraName.innerText = eraData.name;
+            
+            elements.mainClicker.innerHTML = `<svg viewBox="0 0 100 100" class="main-object">${SVGS[STATE.era]}</svg>`;
+        }
+
+        function renderUpgrades() {
+            elements.upgradesList.innerHTML = '';
+            let count = 0;
+            UPGRADES.forEach(up => {
+                // Only show upgrades from current or previous eras, that aren't bought
+                if(up.era <= STATE.era && !STATE.upgrades.includes(up.id)) {
+                    // Hide if way too expensive (keeps list clean)
+                    if(up.cost > STATE.totalResources * 10 && STATE.totalResources > 1000) return; 
+
+                    count++;
+                    const div = document.createElement('div');
+                    const canAfford = STATE.resources >= up.cost;
+                    div.className = `upgrade-item ${canAfford ? '' : 'locked'}`;
+                    div.innerHTML = `
+                        <div class="upgrade-name">${up.name}</div>
+                        <div class="upgrade-desc">${up.desc}</div>
+                        <div class="upgrade-cost">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="12" r="10"/></svg>
+                            ${formatNumber(up.cost)}
+                        </div>
+                    `;
+                    div.onclick = () => { initAudio(); buyUpgrade(up.id); };
+                    elements.upgradesList.appendChild(div);
+                }
+            });
+            document.getElementById('upgrade-count').innerText = `${STATE.upgrades.length}/${UPGRADES.length}`;
+        }
+
+        function renderAchievements() {
+            elements.achievementsList.innerHTML = '';
+            ACHIEVEMENTS.forEach(ach => {
+                const unlocked = STATE.achievements.includes(ach.id);
+                const div = document.createElement('div');
+                div.className = `achievement ${unlocked ? 'unlocked' : ''}`;
+                div.innerHTML = `
+                    <div class="ach-icon">${unlocked ? '🏆' : '🔒'}</div>
+                    <div class="ach-details">
+                        <h4>${ach.name}</h4>
+                        <p>${ach.desc}</p>
+                    </div>
+                `;
+                elements.achievementsList.appendChild(div);
+            });
+            let prog = Math.floor((STATE.achievements.length / ACHIEVEMENTS.length) * 100);
+            document.getElementById('ach-progress').innerText = `${prog}%`;
+        }
+
+        function updateUI(force = false) {
+            // Smooth score rolling
+            displayScore += (STATE.resources - displayScore) * 0.2;
+            if(Math.abs(STATE.resources - displayScore) < 1 || force) displayScore = STATE.resources;
+            
+            elements.score.innerText = formatNumber(displayScore);
+            elements.cps.innerText = `${formatNumber(STATS.cps)} / sec`;
+
+            // Update stats tab
+            document.getElementById('stat-clicks').innerText = formatNumber(STATE.clicks);
+            document.getElementById('stat-total-res').innerText = formatNumber(STATE.totalResources);
+            document.getElementById('stat-click-power').innerText = formatNumber(STATS.clickPower);
+            document.getElementById('stat-upgrades').innerText = STATE.upgrades.length;
+            document.getElementById('stat-crits').innerText = formatNumber(STATE.crits);
+            document.getElementById('stat-crit-chance').innerText = `${(STATS.critChance * 100).toFixed(1)}%`;
+            document.getElementById('stat-crit-mult').innerText = `${STATS.critMult.toFixed(1)}x`;
+            
+            let t = Math.floor(STATE.timePlayed);
+            let h = Math.floor(t / 3600).toString().padStart(2, '0');
+            let m = Math.floor((t % 3600) / 60).toString().padStart(2, '0');
+            let s = (t % 60).toString().padStart(2, '0');
+            document.getElementById('stat-time').innerText = `${h}:${m}:${s}`;
+
+            // Fast update upgrade affordance classes without full DOM rebuild
+            Array.from(elements.upgradesList.children).forEach((child, index) => {
+                // This is a rough match, but renderUpgrades is called when purchasing or era change so list order is stable between renders
+                // Better approach: store cost on element dataset.
+            });
+            // Given the constraint, we will just rely on renderUpgrades() called periodically or on purchase.
+        }
+
+        function showToast(msg) {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.innerText = msg;
+            container.appendChild(toast);
+            setTimeout(() => { if(toast.parentNode) toast.parentNode.removeChild(toast); }, 3000);
+        }
+
+        // Tabs Logic
+        document.querySelectorAll('.tab-btn').forEach(btn => {
+            btn.onclick = () => {
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                btn.classList.add('active');
+                document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+            };
         });
+
+        // Event Listeners
+        elements.mainClicker.addEventListener('mousedown', (e) => { initAudio(); triggerClick(e); });
+        elements.mainClicker.addEventListener('touchstart', (e) => { 
+            e.preventDefault(); // Prevent double fire
+            initAudio();
+            for(let i=0; i<e.changedTouches.length; i++) triggerClick(e.changedTouches[i]); 
+        }, {passive: false});
+
+        elements.evolveBtn.addEventListener('click', () => { initAudio(); evolve(); });
+
+        // --- 7. FIREBASE & SAVING SYSTEM ---
+        let db, auth, currentUser;
+        const saveStatusEl = document.getElementById('cloud-status');
+
+        async function initFirebase() {
+            if (!firebaseConfig) {
+                saveStatusEl.innerText = "Modo Local (Firebase no detectado)";
+                loadLocalMemory();
+                return;
+            }
+            try {
+                const app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+
+                onAuthStateChanged(auth, async (user) => {
+                    currentUser = user;
+                    if(user) {
+                        saveStatusEl.innerText = "Autenticado. Cargando...";
+                        await loadFromCloud();
+                        setInterval(saveToCloud, 30000); // Auto save every 30s
+                    } else {
+                        saveStatusEl.innerText = "Desconectado";
+                    }
+                });
+            } catch(e) {
+                console.error(e);
+                saveStatusEl.innerText = "Error de conexión. Modo Local.";
+                loadLocalMemory();
+            }
+        }
+
+        async function saveToCloud() {
+            if(!currentUser || !db) return;
+            try {
+                STATE.lastSave = Date.now();
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saveData', 'game');
+                await setDoc(docRef, { data: JSON.stringify(STATE) });
+                saveStatusEl.innerText = `Guardado: ${new Date().toLocaleTimeString()}`;
+            } catch(e) { console.error("Save error", e); }
+        }
+
+        async function loadFromCloud() {
+            if(!currentUser || !db) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'saveData', 'game');
+                const snap = await getDoc(docRef);
+                if(snap.exists() && snap.data().data) {
+                    let loaded = JSON.parse(snap.data().data);
+                    applySaveData(loaded);
+                    saveStatusEl.innerText = "Partida cargada de la nube.";
+                } else {
+                    saveStatusEl.innerText = "Nueva partida en la nube.";
+                }
+            } catch(e) { console.error("Load error", e); }
+        }
+
+        function loadLocalMemory() {
+            // For environments without Firebase
+            const b64 = document.getElementById('save-data-box').value;
+            if(b64) importSave(b64);
+        }
+
+        function applySaveData(data) {
+            // Merge safe defaults
+            STATE = { ...STATE, ...data };
+            // Calculate offline progress
+            let now = Date.now();
+            let diffSeconds = (now - STATE.lastSave) / 1000;
+            if(diffSeconds > 60 && STATS.cps > 0) { // More than 1 min offline
+                let offlineGain = STATS.cps * diffSeconds;
+                STATE.resources += offlineGain;
+                STATE.totalResources += offlineGain;
+                showToast(`⏳ Tiempo offline: Ganaste ${formatNumber(offlineGain)} recursos.`);
+            }
+            STATE.lastSave = now;
+            
+            calculateStats();
+            applyEraVisuals();
+            renderUpgrades();
+            renderAchievements();
+            checkEraProgress();
+            updateUI(true);
+        }
+
+        // Manual Export / Import
+        document.getElementById('btn-copy').addEventListener('click', () => {
+            const str = btoa(JSON.stringify(STATE));
+            document.getElementById('save-data-box').value = str;
+            document.getElementById('save-data-box').select();
+            document.execCommand('copy');
+            showToast("💾 Código de partida copiado al portapapeles.");
+        });
+
+        document.getElementById('btn-import').addEventListener('click', () => {
+            const str = document.getElementById('save-data-box').value;
+            if(!str) return showToast("❌ Pega un código primero.");
+            try {
+                const data = JSON.parse(atob(str));
+                applySaveData(data);
+                showToast("✅ Partida importada con éxito.");
+                if(currentUser) saveToCloud();
+            } catch(e) {
+                showToast("❌ Código inválido.");
+            }
+        });
+
+        document.getElementById('btn-wipe').addEventListener('click', () => {
+            // Using custom overlay instead of confirm() as requested
+            let conf = document.createElement('div');
+            conf.style.cssText = "position:fixed; top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.9);z-index:1000;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:20px;";
+            conf.innerHTML = `
+                <h2 style="color:#ef4444;">¿ESTÁS SEGURO?</h2>
+                <p>Perderás TODO el progreso.</p>
+                <div style="display:flex; gap:20px;">
+                    <button id="btn-yes" style="padding:10px 30px; background:#ef4444; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">SÍ, BORRAR</button>
+                    <button id="btn-no" style="padding:10px 30px; background:#4b5563; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:bold;">CANCELAR</button>
+                </div>
+            `;
+            document.body.appendChild(conf);
+            
+            document.getElementById('btn-no').onclick = () => document.body.removeChild(conf);
+            document.getElementById('btn-yes').onclick = () => {
+                STATE = { resources: 0, totalResources: 0, clicks: 0, crits: 0, timePlayed: 0, era: 0, upgrades: [], achievements: [], lastSave: Date.now() };
+                calculateStats(); applyEraVisuals(); renderUpgrades(); renderAchievements(); updateUI(true);
+                if(currentUser) saveToCloud();
+                document.body.removeChild(conf);
+                showToast("🗑️ Partida reiniciada.");
+            };
+        });
+
+
+        // --- 8. MAIN GAME LOOP ---
+        let lastTime = performance.now();
+        let uiTimer = 0;
+
+        function gameLoop(time) {
+            requestAnimationFrame(gameLoop);
+            
+            let dt = (time - lastTime) / 1000;
+            if(dt > 1) dt = 1; // Prevent huge leaps on pause/resume
+            lastTime = time;
+
+            // Economy Simulation
+            if(STATS.cps > 0) {
+                let gain = STATS.cps * dt;
+                STATE.resources += gain;
+                STATE.totalResources += gain;
+            }
+            
+            STATE.timePlayed += dt;
+
+            // VFX Update
+            updateAndDrawVFX(dt);
+
+            // Throttled UI Updates (10 times per second for DOM performance)
+            uiTimer += dt;
+            if(uiTimer > 0.1) {
+                updateUI();
+                checkEraProgress();
+                uiTimer = 0;
+            }
+        }
+
+        // --- INIT ---
+        window.onload = () => {
+            calculateStats();
+            applyEraVisuals();
+            renderUpgrades();
+            renderAchievements();
+            initFirebase();
+            requestAnimationFrame(gameLoop);
+            
+            // Random ambient particles trigger
+            setInterval(() => {
+                if(Math.random() > 0.5) {
+                    spawnParticles(window.innerWidth * Math.random(), window.innerHeight * Math.random(), 1, false);
+                }
+                // Refresh upgrade list periodically to update affordances
+                renderUpgrades();
+            }, 2000);
+        };
     </script>
 </body>
 </html>
