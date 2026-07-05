@@ -2,62 +2,143 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Mi Primer 3D - El Primo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Gym Simulator 3D - El Primo</title>
     <style>
-        body { margin: 0; overflow: hidden; background-color: #000; }
-        canvas { display: block; }
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Impact', sans-serif; }
+        #interfaz {
+            position: absolute;
+            top: 20px;
+            width: 100%;
+            text-align: center;
+            color: #ff0055;
+            font-size: 32px;
+            text-shadow: 2px 2px #000;
+            pointer-events: none;
+        }
+        #instrucciones {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            text-align: center;
+            color: #aaa;
+            font-size: 14px;
+            pointer-events: none;
+        }
     </style>
 </head>
 <body>
 
-    <!-- Importamos la librería Three.js para renderizar 3D real -->
+    <div id="interfaz">MANCUERNAS CAZADAS: <span id="puntos">0</span></div>
+    <div id="instrucciones">Arrastra el dedo por la pantalla para mover el disco de 20kg</div>
+
+    <!-- Motor 3D Three.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        // 1. CREAR LA ESCENA (El universo 3D)
+        // 1. CONFIGURACIÓN DEL GIMNASIO 3D
         const escena = new THREE.Scene();
+        escena.background = new THREE.Color(0x1a1a1a); // Color suelo del gym
 
-        // 2. CREAR LA CÁMARA (Para ver el mundo 3D)
-        const camara = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-        camara.position.z = 5; // Alejamos la cámara para ver el objeto
+        const camara = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camara.position.set(0, 8, 10); // Mirada desde arriba inclinada tipo juego clásico
+        camara.lookAt(0, 0, 0);
 
-        // 3. EL RENDERIZADOR (El motor que dibuja los gráficos en el iPhone)
         const renderizador = new THREE.WebGLRenderer({ antialias: true });
         renderizador.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderizador.domElement);
 
-        // 4. CREAR EL OBJETO 3D (Un cubo con geometría y material)
-        const geometria = new THREE.BoxGeometry(2, 2, 2); // Ancho, alto y profundidad en 3D
-        const material = new THREE.MeshStandardMaterial({ color: 0x00ff88, roughness: 0.3 });
-        const cubo = new THREE.Mesh(geometria, material);
-        escena.add(cubo); // Metemos el cubo en nuestro universo
+        // 2. LUCES DEL GYM (Focos potentes para que brille el metal)
+        const luzTecho = new THREE.DirectionalLight(0xffffff, 1.5);
+        luzTecho.position.set(0, 10, 5);
+        escena.add(luzTecho);
+        escena.add(new THREE.AmbientLight(0x444444));
 
-        // 5. AÑADIR LUZ (Si no hay luz, el 3D se ve completamente negro)
-        const luzLado = new THREE.DirectionalLight(0xffffff, 1);
-        luzLado.position.set(5, 5, 5); // Posición de la luz en ejes X, Y, Z
-        escena.add(luzLado);
+        // 3. NUESTRO JUGADOR: UN DISCO DE HIERRO DE 20KG (Un cilindro chato en 3D)
+        const geoDisco = new THREE.CylinderGeometry(1.5, 1.5, 0.3, 32);
+        const matDisco = new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.2, metalness: 0.8 });
+        const disco = new THREE.Mesh(geoDisco, matDisco);
+        disco.position.set(0, 0, 0);
+        escena.add(disco);
 
-        const luzAmbiente = new THREE.AmbientLight(0x333333); // Luz suave de fondo
-        escena.add(luzAmbiente);
+        // Centro del disco (el agujero típico pintado de rojo)
+        const geoCentro = new THREE.CylinderGeometry(0.3, 0.3, 0.32, 16);
+        const matCentro = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        const centroDisco = new THREE.Mesh(geoCentro, matCentro);
+        disco.add(centroDisco); // Se pega al disco principal
 
-        // 6. EL BUCLE DE ANIMACIÓN (Para que se mueva)
+        // 4. EL OBJETIVO: LA MANCUERNA (Unión de 3 piezas 3D: mango y dos pesos)
+        const grupoMancuerna = new THREE.Group();
+        
+        // Mango de la mancuerna
+        const geoMango = new THREE.CylinderGeometry(0.1, 0.1, 1.5, 16);
+        const matMetal = new THREE.MeshStandardMaterial({ color: 0xcccccc, metalness: 0.9 });
+        const mango = new THREE.Mesh(geoMango, matMetal);
+        mango.rotation.z = Math.PI / 2; // Tumbado
+        grupoMancuerna.add(mango);
+
+        // Pesos de los lados (dos cilindros grandes negros)
+        const geoPeso = new THREE.CylinderGeometry(0.8, 0.8, 0.4, 16);
+        const matPeso = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.5 });
+        
+        const pesoIzquierdo = new THREE.Mesh(geoPeso, matPeso);
+        pesoIzquierdo.position.x = -0.7;
+        pesoIzquierdo.rotation.z = Math.PI / 2;
+        grupoMancuerna.add(pesoIzquierdo);
+
+        const pesoDerecho = pesoIzquierdo.clone();
+        pesoDerecho.position.x = 0.7;
+        grupoMancuerna.add(pesoDerecho);
+
+        escena.add(grupoMancuerna);
+        recolocarMancuerna();
+
+        // 5. LÓGICA DEL JUEGO Y CONTROLES
+        let puntos = 0;
+        let mouseX = 0, mouseY = 0;
+        let objetivoX = 0, objetivoZ = 0;
+
+        function recolocarMancuerna() {
+            grupoMancuerna.position.x = (Math.random() - 0.5) * 8;
+            grupoMancuerna.position.z = (Math.random() - 0.5) * 6;
+            grupoMancuerna.position.y = 0;
+        }
+
+        // Detectar el dedo en la pantalla del iPhone para mover el disco
+        window.addEventListener('touchmove', (e) => {
+            const touch = e.touches[0];
+            // Traducimos los píxeles de la pantalla a coordenadas del mundo 3D
+            objetivoX = ((touch.clientX / window.innerWidth) * 2 - 1) * 5;
+            objetivoZ = -((touch.clientY / window.innerHeight) * 2 - 1) * 4;
+        });
+
+        // 6. BUCLE DE ANIMACIÓN (Renderizado e IA de colisiones)
         function animar() {
             requestAnimationFrame(animar);
 
-            // Programamos la rotación del cubo en los tres ejes
-            cubo.rotation.x += 0.01;
-            cubo.rotation.y += 0.01;
-            cubo.rotation.z += 0.005;
+            // Movimiento suave del disco hacia donde tienes el dedo
+            disco.position.x += (objetivoX - disco.position.x) * 0.1;
+            disco.position.z += (objetivoZ - disco.position.z) * 0.1;
 
-            // Renderizamos la escena con la cámara
+            // Rotamos la mancuerna sobre sí misma para que se vea guapa y brillante
+            grupoMancuerna.rotation.y += 0.02;
+            grupoMancuerna.rotation.x += 0.01;
+
+            // DETECCIÓN DE COLISIÓN 3D (Teorema de Pitágoras en tres dimensiones)
+            const distancia = disco.position.distanceTo(grupoMancuerna.position);
+            
+            if (distancia < 1.8) { // Si el disco toca la mancuerna... ¡PUM! ¡Punto!
+                puntos++;
+                document.getElementById("puntos").innerText = puntos;
+                recolocarMancuerna(); // Aparece en otro sitio del gym
+            }
+
             renderizador.render(escena, camara);
         }
 
-        // Ejecutar la animación
         animar();
 
-        // Ajustar el tamaño si giras el iPhone
+        // Si giras la pantalla del móvil, se autoajusta el 3D
         window.addEventListener('resize', () => {
             camara.aspect = window.innerWidth / window.innerHeight;
             camara.updateProjectionMatrix();
