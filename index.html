@@ -2,120 +2,67 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Snake del Primo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mi Primer 3D - El Primo</title>
     <style>
-        body {
-            background-color: #111;
-            color: white;
-            font-family: sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 20px;
-            overflow: hidden;
-        }
-        canvas {
-            background-color: #222;
-            display: block;
-            margin: 20px auto;
-            border: 4px solid #555;
-        }
-        .controles {
-            display: grid;
-            grid-template-columns: repeat(3, 80px);
-            grid-gap: 10px;
-            justify-content: center;
-            margin-top: 20px;
-        }
-        button {
-            background-color: #444;
-            color: white;
-            border: none;
-            padding: 20px;
-            font-size: 20px;
-            border-radius: 10px;
-            active { background-color: #666; }
-        }
+        body { margin: 0; overflow: hidden; background-color: #000; }
+        canvas { display: block; }
     </style>
 </head>
 <body>
 
-    <h1>Puntos: <span id="score">0</span></h1>
-    <canvas id="gameCanvas" width="300" height="300"></canvas>
-
-    <!-- Botones para jugar cómodamente desde la pantalla del móvil -->
-    <div class="controles">
-        <td></td>
-        <button onclick="cambiarDir('ARRIBA')">▲</button>
-        <td></td>
-        <button onclick="cambiarDir('IZQUIERDA')">◀</button>
-        <button onclick="cambiarDir('ABAJO')">▼</button>
-        <button onclick="cambiarDir('DERECHA')">▶</button>
-    </div>
+    <!-- Importamos la librería Three.js para renderizar 3D real -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
-        const canvas = document.getElementById("gameCanvas");
-        const ctx = canvas.getContext("2d");
-        const tamañoBloque = 15;
-        
-        let snake = [{x: 150, y: 150}];
-        let comida = {x: 0, y: 0};
-        let dx = tamañoBloque;
-        let dy = 0;
-        let puntos = 0;
+        // 1. CREAR LA ESCENA (El universo 3D)
+        const escena = new THREE.Scene();
 
-        function generarComida() {
-            comida.x = Math.floor(Math.random() * (canvas.width / tamañoBloque)) * tamañoBloque;
-            comida.y = Math.floor(Math.random() * (canvas.height / tamañoBloque)) * tamañoBloque;
+        // 2. CREAR LA CÁMARA (Para ver el mundo 3D)
+        const camara = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        camara.position.z = 5; // Alejamos la cámara para ver el objeto
+
+        // 3. EL RENDERIZADOR (El motor que dibuja los gráficos en el iPhone)
+        const renderizador = new THREE.WebGLRenderer({ antialias: true });
+        renderizador.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderizador.domElement);
+
+        // 4. CREAR EL OBJETO 3D (Un cubo con geometría y material)
+        const geometria = new THREE.BoxGeometry(2, 2, 2); // Ancho, alto y profundidad en 3D
+        const material = new THREE.MeshStandardMaterial({ color: 0x00ff88, roughness: 0.3 });
+        const cubo = new THREE.Mesh(geometria, material);
+        escena.add(cubo); // Metemos el cubo en nuestro universo
+
+        // 5. AÑADIR LUZ (Si no hay luz, el 3D se ve completamente negro)
+        const luzLado = new THREE.DirectionalLight(0xffffff, 1);
+        luzLado.position.set(5, 5, 5); // Posición de la luz en ejes X, Y, Z
+        escena.add(luzLado);
+
+        const luzAmbiente = new THREE.AmbientLight(0x333333); // Luz suave de fondo
+        escena.add(luzAmbiente);
+
+        // 6. EL BUCLE DE ANIMACIÓN (Para que se mueva)
+        function animar() {
+            requestAnimationFrame(animar);
+
+            // Programamos la rotación del cubo en los tres ejes
+            cubo.rotation.x += 0.01;
+            cubo.rotation.y += 0.01;
+            cubo.rotation.z += 0.005;
+
+            // Renderizamos la escena con la cámara
+            renderizador.render(escena, camara);
         }
 
-        function cambiarDir(dir) {
-            if (dir === 'IZQUIERDA' && dx === 0) { dx = -tamañoBloque; dy = 0; }
-            if (dir === 'DERECHA' && dx === 0) { dx = tamañoBloque; dy = 0; }
-            if (dir === 'ARRIBA' && dy === 0) { dx = 0; dy = -tamañoBloque; }
-            if (dir === 'ABAJO' && dy === 0) { dx = 0; dy = tamañoBloque; }
-        }
+        // Ejecutar la animación
+        animar();
 
-        function bucleJuego() {
-            // Mover la serpiente
-            const cabeza = {x: snake[0].x + dx, y: snake[0].y + dy};
-            snake.unshift(cabeza);
-
-            // Ver si come
-            if (cabeza.x === comida.x && cabeza.y === comida.y) {
-                puntos += 10;
-                document.getElementById("score").innerText = puntos;
-                generarComida();
-            } else {
-                snake.pop();
-            }
-
-            // Choques con paredes o consigo misma (Game Over)
-            if (cabeza.x < 0 || cabeza.x >= canvas.width || cabeza.y < 0 || cabeza.y >= canvas.height ||
-                snake.slice(1).some(seg => seg.x === cabeza.x && seg.y === cabeza.y)) {
-                alert("¡Has palmao, primo! Puntos: " + puntos);
-                snake = [{x: 150, y: 150}];
-                dx = tamañoBloque; dy = 0; puntos = 0;
-                document.getElementById("score").innerText = puntos;
-            }
-
-            // Dibujar todo
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Dibujar comida
-            ctx.fillStyle = "red";
-            ctx.fillRect(comida.x, comida.y, tamañoBloque, tamañoBloque);
-
-            // Dibujar serpiente
-            ctx.fillStyle = "lime";
-            snake.forEach(seg => ctx.fillRect(seg.x, seg.y, tamañoBloque, tamañoBloque));
-
-            setTimeout(bucleJuego, 150); // Velocidad del juego
-        }
-
-        generarComida();
-        bucleJuego();
+        // Ajustar el tamaño si giras el iPhone
+        window.addEventListener('resize', () => {
+            camara.aspect = window.innerWidth / window.innerHeight;
+            camara.updateProjectionMatrix();
+            renderizador.setSize(window.innerWidth, window.innerHeight);
+        });
     </script>
 </body>
 </html>
-
