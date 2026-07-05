@@ -1,1 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Snake del Primo</title>
+    <style>
+        body {
+            background-color: #111;
+            color: white;
+            font-family: sans-serif;
+            text-align: center;
+            margin: 0;
+            padding: 20px;
+            overflow: hidden;
+        }
+        canvas {
+            background-color: #222;
+            display: block;
+            margin: 20px auto;
+            border: 4px solid #555;
+        }
+        .controles {
+            display: grid;
+            grid-template-columns: repeat(3, 80px);
+            grid-gap: 10px;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        button {
+            background-color: #444;
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 20px;
+            border-radius: 10px;
+            active { background-color: #666; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Puntos: <span id="score">0</span></h1>
+    <canvas id="gameCanvas" width="300" height="300"></canvas>
+
+    <!-- Botones para jugar cómodamente desde la pantalla del móvil -->
+    <div class="controles">
+        <td></td>
+        <button onclick="cambiarDir('ARRIBA')">▲</button>
+        <td></td>
+        <button onclick="cambiarDir('IZQUIERDA')">◀</button>
+        <button onclick="cambiarDir('ABAJO')">▼</button>
+        <button onclick="cambiarDir('DERECHA')">▶</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+        const tamañoBloque = 15;
+        
+        let snake = [{x: 150, y: 150}];
+        let comida = {x: 0, y: 0};
+        let dx = tamañoBloque;
+        let dy = 0;
+        let puntos = 0;
+
+        function generarComida() {
+            comida.x = Math.floor(Math.random() * (canvas.width / tamañoBloque)) * tamañoBloque;
+            comida.y = Math.floor(Math.random() * (canvas.height / tamañoBloque)) * tamañoBloque;
+        }
+
+        function cambiarDir(dir) {
+            if (dir === 'IZQUIERDA' && dx === 0) { dx = -tamañoBloque; dy = 0; }
+            if (dir === 'DERECHA' && dx === 0) { dx = tamañoBloque; dy = 0; }
+            if (dir === 'ARRIBA' && dy === 0) { dx = 0; dy = -tamañoBloque; }
+            if (dir === 'ABAJO' && dy === 0) { dx = 0; dy = tamañoBloque; }
+        }
+
+        function bucleJuego() {
+            // Mover la serpiente
+            const cabeza = {x: snake[0].x + dx, y: snake[0].y + dy};
+            snake.unshift(cabeza);
+
+            // Ver si come
+            if (cabeza.x === comida.x && cabeza.y === comida.y) {
+                puntos += 10;
+                document.getElementById("score").innerText = puntos;
+                generarComida();
+            } else {
+                snake.pop();
+            }
+
+            // Choques con paredes o consigo misma (Game Over)
+            if (cabeza.x < 0 || cabeza.x >= canvas.width || cabeza.y < 0 || cabeza.y >= canvas.height ||
+                snake.slice(1).some(seg => seg.x === cabeza.x && seg.y === cabeza.y)) {
+                alert("¡Has palmao, primo! Puntos: " + puntos);
+                snake = [{x: 150, y: 150}];
+                dx = tamañoBloque; dy = 0; puntos = 0;
+                document.getElementById("score").innerText = puntos;
+            }
+
+            // Dibujar todo
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar comida
+            ctx.fillStyle = "red";
+            ctx.fillRect(comida.x, comida.y, tamañoBloque, tamañoBloque);
+
+            // Dibujar serpiente
+            ctx.fillStyle = "lime";
+            snake.forEach(seg => ctx.fillRect(seg.x, seg.y, tamañoBloque, tamañoBloque));
+
+            setTimeout(bucleJuego, 150); // Velocidad del juego
+        }
+
+        generarComida();
+        bucleJuego();
+    </script>
+</body>
+</html>
 
